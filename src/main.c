@@ -19,6 +19,9 @@
 #define file(s)                 ((s) & 0x07)
 #define board(s)                ((uint64_t)1 << (s))
 
+// --verbose flag
+static int verbose = 0;
+
 struct pos {
     uint64_t white;
     uint64_t black;
@@ -251,6 +254,10 @@ void get_api(struct evhttp_request *req, void *context) {
         return;
     }
 
+    if (verbose) {
+        printf("probing: %s\n", fen);
+    }
+
     unsigned moves[TB_MAX_MOVES];
     unsigned bestmove = tb_probe_root(pos.white, pos.black,
                                       pos.kings, pos.queens, pos.rooks, pos.bishops, pos.knights, pos.pawns,
@@ -302,7 +309,6 @@ int serve(int port) {
 int main(int argc, char *argv[]) {
     // Options
     static int port = 5000;
-    static int verbose = 0;
 
     const char **gaviota_paths = tbpaths_init();
     if (!gaviota_paths) {
