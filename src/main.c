@@ -14,6 +14,8 @@
 #include "tbprobe.h"
 #undef tb_init
 
+#define BOARD_RANK_1            0x00000000000000FFull
+#define BOARD_FILE_A            0x8080808080808080ull
 #define square(r, f)            (8 * (r) + (f))
 #define rank(s)                 ((s) >> 3)
 #define file(s)                 ((s) & 0x07)
@@ -231,6 +233,77 @@ fen_parse_error:
     return false;
 }
 
+void move_san(const struct pos *pos, unsigned move, char *str) {
+    uint64_t occ      = pos->black | pos->white;
+    uint64_t us       = (pos->turn? pos->white: pos->black);
+    unsigned from     = TB_GET_FROM(move);
+    unsigned to       = TB_GET_TO(move);
+    unsigned r        = rank(from);
+    unsigned f        = file(from);
+    unsigned promotes = TB_GET_PROMOTES(move);
+    bool     capture  = (occ & board(to)) != 0 || (TB_GET_EP(move) != 0);
+    uint64_t b = board(from), att = 0;
+    if (b & pos->kings)
+        *str++ = 'K';
+    else if (b & pos->queens)
+    {
+        *str++ = 'Q';
+        att = tb_queen_attacks(to, occ) & us & pos->queens;
+    }
+    else if (b & pos->rooks)
+    {
+        *str++ = 'R';
+        att = tb_rook_attacks(to, occ) & us & pos->rooks;
+    }
+    else if (b & pos->bishops)
+    {
+        *str++ = 'B';
+        att = tb_bishop_attacks(to, occ) & us & pos->bishops;
+    }
+    else if (b & pos->knights)
+    {
+        *str++ = 'N';
+        att = tb_knight_attacks(to) & us & pos->knights;
+    }
+    else
+    {
+        if (capture)
+            *str++ = 'a' + f;
+    }
+    if (tb_pop_count(att) > 1)
+    {
+        if (tb_pop_count(att & (BOARD_FILE_A >> f)) <= 1)
+            *str++ = 'a' + f;
+        else if (tb_pop_count(att & (BOARD_RANK_1 >> r)) <= 1)
+            *str++ = '1' + r;
+        else
+        {
+            *str++ = 'a' + f;
+            *str++ = '1' + r;
+        }
+    }
+    if (capture)
+        *str++ = 'x';
+    *str++ = 'a' + file(to);
+    *str++ = '1' + rank(to);
+    if (promotes != TB_PROMOTES_NONE)
+    {
+        *str++ = '=';
+        switch (promotes)
+        {
+            case TB_PROMOTES_QUEEN:
+                *str++ = 'Q'; break;
+            case TB_PROMOTES_ROOK:
+                *str++ = 'R'; break;
+            case TB_PROMOTES_BISHOP:
+                *str++ = 'B'; break;
+            case TB_PROMOTES_KNIGHT:
+                *str++ = 'N'; break;
+        }
+    }
+    *str++ = '\0';
+}
+
 void get_api(struct evhttp_request *req, void *context) {
     const char *uri = evhttp_request_get_uri(req);
     if (!uri) {
@@ -273,7 +346,12 @@ void get_api(struct evhttp_request *req, void *context) {
         abort();
     }
 
-    evbuffer_add_printf(res, "hello world");
+    for (unsigned i = 0; moves[i] != TB_RESULT_FAILED; i++) {
+        unsigned move = moves[i];
+        char san[32];
+        move_san(&pos, move, san);
+        evbuffer_add_printf(res, "{\"san\": \"%s\", \"wdl\": %d, \"dtz\": %d}\n", san, TB_GET_WDL(move) - 2, TB_GET_DTZ(move));
+    }
 
     evhttp_send_reply(req, HTTP_OK, "OK", res);
 
