@@ -245,9 +245,18 @@ void get_api(struct evhttp_request *req, void *context) {
         return;
     }
 
-    struct pos root_pos;
-    if (!parse_fen(&root_pos, fen)) {
+    struct pos pos;
+    if (!parse_fen(&pos, fen)) {
         evhttp_send_error(req, HTTP_BADREQUEST, "Invalid FEN");
+        return;
+    }
+
+    unsigned moves[TB_MAX_MOVES];
+    unsigned bestmove = tb_probe_root(pos.white, pos.black,
+                                      pos.kings, pos.queens, pos.rooks, pos.bishops, pos.knights, pos.pawns,
+                                      pos.rule50, pos.castling, pos.ep, pos.turn, moves);
+    if (bestmove == TB_RESULT_FAILED) {
+        evhttp_send_error(req, HTTP_NOTFOUND, "Position not found in syzygy tablebases");
         return;
     }
 
