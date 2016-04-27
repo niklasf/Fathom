@@ -430,7 +430,105 @@ struct move_info {
     bool stalemate;
     int dtz;
     int wdl;
+    bool has_dtm;
+    int dtm;
 };
+
+int probe_dtm(const struct pos *pos, bool *success) {
+    *success = false;
+    if (is_insufficient_material(pos)) {
+        return 0;
+    }
+
+    if (tb_pop_count(pos->white | pos->black) > 5) {
+        return 0;
+    }
+
+    if (pos->castling != 0) {
+        return 0;
+    }
+
+    unsigned ws[17];
+    unsigned bs[17];
+    unsigned char wp[17];
+    unsigned char bp[17];
+
+    unsigned i = 0;
+    uint64_t white = pos->white;
+    while (white) {
+        uint64_t sq = white & -white;
+        ws[i] = square(rank(sq), file(sq));
+        if (pos->pawns & sq) {
+            wp[i] = tb_PAWN;
+        } else if (pos->knights & sq) {
+            wp[i] = tb_KNIGHT;
+        } else if (pos->bishops & sq) {
+            wp[i] = tb_BISHOP;
+        } else if (pos->rooks & sq) {
+            wp[i] = tb_ROOK;
+        } else if (pos->queens & sq) {
+            wp[i] = tb_QUEEN;
+        } else if (pos->kings & sq) {
+            wp[i] = tb_KING;
+        } else {
+            fputs("inconsistent bitboard\n", stderr);
+            abort();
+        }
+        white &= white - 1;
+        i++;
+    }
+    ws[i] = tb_NOSQUARE;
+    wp[i] = tb_NOPIECE;
+
+    i = 0;
+    uint64_t black = pos->black;
+    while (black) {
+        uint64_t sq = black & -black;
+        bs[i] = square(rank(sq), file(sq));
+        if (pos->pawns & sq) {
+            bp[i] = tb_PAWN;
+        } else if (pos->knights & sq) {
+            bp[i] = tb_KNIGHT;
+        } else if (pos->bishops & sq) {
+            bp[i] = tb_BISHOP;
+        } else if (pos->rooks & sq) {
+            bp[i] = tb_ROOK;
+        } else if (pos->queens & sq) {
+            bp[i] = tb_QUEEN;
+        } else if (pos->kings & sq) {
+            bp[i] = tb_KING;
+        } else {
+            fputs("inconsistent bitboard\n", stderr);
+            abort();
+        }
+        black &= black - 1;
+        i++;
+    }
+    bs[i] = tb_NOSQUARE;
+    bp[i] = tb_NOPIECE;
+
+    unsigned info;
+    unsigned plies_to_mate;
+    unsigned available =  tb_probe_hard(pos->turn, pos->ep ? pos->ep : tb_NOSQUARE, 0, ws, bs, wp, bp, &info, &plies_to_mate);
+    if (!available || info == tb_FORBID || info == tb_UNKNOWN || info == tb_DRAW) {
+        return 0;
+    }
+
+    *success = true;
+
+    if (info == tb_WMATE && pos->turn) {
+        return -plies_to_mate;
+    } else if (info == tb_BMATE && !pos->turn) {
+        return -plies_to_mate;
+    } else if (info == tb_WMATE && !pos->turn) {
+        return plies_to_mate;
+    } else if (info == tb_BMATE && pos->turn) {
+        return plies_to_mate;
+    } else {
+        fprintf(stderr, "gaviota tablebase error, info: %d", info);
+        abort();
+    }
+}
 
 void get_api(struct evhttp_request *req, void *context) {
     const char *uri = evhttp_request_get_uri(req);
@@ -481,7 +579,7 @@ void get_api(struct evhttp_request *req, void *context) {
         return;
     }
 
-    struct move_info move_info[TB_MAX_MOVES + 1];
+    struct move_info move_info[TB_MAX_MOVES];
     unsigned num_moves = 0;
 
     for (unsigned i = 0; moves[i] != TB_RESULT_FAILED; i++, num_moves++) {
@@ -505,6 +603,8 @@ void get_api(struct evhttp_request *req, void *context) {
         move_info[i].stalemate = dtz == TB_RESULT_STALEMATE;
         move_info[i].wdl = TB_GET_WDL(dtz) - 2;
         move_info[i].dtz = TB_GET_DTZ(dtz);
+
+        move_info[i].dtm = probe_dtm(&move_info[i].pos_after, &move_info[i].has_dtm);
     }
 
     // Build response
@@ -524,7 +624,14 @@ void get_api(struct evhttp_request *req, void *context) {
     evbuffer_add_printf(res, "  \"moves\": [\n");
 
     for (unsigned i = 0; i < num_moves; i++) {
-        evbuffer_add_printf(res, "    {\"uci\": \"%s\", \"san\": \"%s\", \"checkmate\": %s, \"stalemate\": %s, \"insufficient_material\": %s, \"dtz\": %d, \"wdl\": %d}", move_info[i].uci, move_info[i].san, move_info[i].checkmate ? "true" : "false", move_info[i].stalemate ? "true" : "false", move_info[i].insufficient_material ? "true" : "false", move_info[i].dtz, move_info[i].wdl);
+        evbuffer_add_printf(res, "    {\"uci\": \"%s\", \"san\": \"%s\", \"checkmate\": %s, \"stalemate\": %s, \"insufficient_material\": %s, \"dtz\": %d, \"wdl\": %d, ", move_info[i].uci, move_info[i].san, move_info[i].checkmate ? "true" : "false", move_info[i].stalemate ? "true" : "false", move_info[i].insufficient_material ? "true" : "false", move_info[i].dtz, move_info[i].wdl);
+
+        if (move_info[i].has_dtm) {
+            evbuffer_add_printf(res, "\"dtm\": %d}", move_info[i].dtm);
+        } else {
+            evbuffer_add_printf(res, "\"dtm\": null}");
+        }
+
         if (i + 1 < num_moves) {
             evbuffer_add_printf(res, ",\n");
         } else {
