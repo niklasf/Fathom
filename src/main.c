@@ -24,6 +24,7 @@
 
 // --verbose flag
 static int verbose = 0;
+static int cors = 1;
 
 bool parse_fen(struct pos *pos, const char *fen) {
     uint64_t white = 0, black = 0;
@@ -593,6 +594,11 @@ void get_api(struct evhttp_request *req, void *context) {
         return;
     }
 
+    struct evkeyvalq *headers = evhttp_request_get_output_headers(req);
+    if (cors) {
+        evhttp_add_header(headers, "Access-Control-Allow-Origin", "*");
+    }
+
     struct evkeyvalq query;
     const char *jsonp = NULL;
     const char *fen = NULL;
@@ -621,7 +627,6 @@ void get_api(struct evhttp_request *req, void *context) {
     }
 
     // Set Content-Type
-    struct evkeyvalq *headers = evhttp_request_get_output_headers(req);
     if (jsonp && strlen(jsonp)) {
         evhttp_add_header(headers, "Content-Type", "application/javascript");
     } else {
@@ -773,6 +778,7 @@ int main(int argc, char *argv[]) {
     while (1) {
         static struct option long_options[] = {
             {"verbose", no_argument,       &verbose, 1},
+            {"cors",    no_argument,       &cors, 1},
             {"port",    required_argument, 0, 'p'},
             {"gaviota", required_argument, 0, 'g'},
             {"syzygy",  required_argument, 0, 's'},
