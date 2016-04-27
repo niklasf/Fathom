@@ -576,6 +576,16 @@ int compare_move_info(const void *l, const void *r) {
     return strcmp(a->uci, b->uci);
 }
 
+int real_wdl(int wdl, int dtz, int rule50) {
+    if (wdl == -2 && dtz - rule50 <= -100) {
+        return -1;
+    } else if (wdl == 2 && dtz + rule50 >= 100) {
+        return 1;
+    } else {
+        return wdl;
+    }
+}
+
 void get_api(struct evhttp_request *req, void *context) {
     const char *uri = evhttp_request_get_uri(req);
     if (!uri) {
@@ -654,13 +664,7 @@ void get_api(struct evhttp_request *req, void *context) {
             move_info[i].dtz = -TB_GET_DTZ(dtz);
         }
 
-        if (move_info[i].wdl == -2 && move_info[i].dtz - move_info[i].pos_after.rule50 <= -100) {
-            move_info[i].real_wdl = -1;
-        } else if (move_info[i].wdl == 2 && move_info[i].dtz + move_info[i].pos_after.rule50 >= 100) {
-            move_info[i].real_wdl = 1;
-        } else {
-            move_info[i].real_wdl = move_info[i].wdl;
-        }
+        move_info[i].real_wdl = real_wdl(move_info[i].wdl, move_info[i].dtz, move_info[i].pos_after.rule50);
 
         move_info[i].dtm = probe_dtm(&move_info[i].pos_after, &move_info[i].has_dtm);
 
@@ -683,6 +687,18 @@ void get_api(struct evhttp_request *req, void *context) {
     evbuffer_add_printf(res, "  \"checkmate\": %s,\n", (bestmove == TB_RESULT_CHECKMATE) ? "true" : "false");
     evbuffer_add_printf(res, "  \"stalemate\": %s,\n", (bestmove == TB_RESULT_STALEMATE) ? "true" : "false");
     evbuffer_add_printf(res, "  \"insufficient_material\": %s,\n", is_insufficient_material(&pos) ? "true" : "false");
+
+    int wdl = TB_GET_WDL(bestmove) - 2;
+    int dtz = TB_GET_DTZ(bestmove);
+    if (wdl < 0) {
+        dtz = -dtz;
+    }
+    int rwdl = real_wdl(wdl, dtz, pos.rule50);
+
+    evbuffer_add_printf(res, "  \"dtz\": %d,\n", dtz);
+    evbuffer_add_printf(res, "  \"wdl\": %d,\n", wdl);
+    evbuffer_add_printf(res, "  \"real_wdl\": %d,\n", rwdl);
+
     evbuffer_add_printf(res, "  \"moves\": [\n");
 
     for (unsigned i = 0; i < num_moves; i++) {
