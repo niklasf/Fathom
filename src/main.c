@@ -24,7 +24,7 @@
 
 // --verbose flag
 static int verbose = 0;
-static int cors = 1;
+static int cors = 0;
 
 bool parse_fen(struct pos *pos, const char *fen) {
     uint64_t white = 0, black = 0;
