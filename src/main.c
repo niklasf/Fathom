@@ -420,6 +420,18 @@ bool is_insufficient_material(const struct pos *pos) {
     }
 }
 
+struct move_info {
+    unsigned move;
+    struct pos pos_after;
+    char san[32];
+    char uci[6];
+    bool insufficient_material;
+    bool checkmate;
+    bool stalemate;
+    int dtz;
+    int wdl;
+};
+
 void get_api(struct evhttp_request *req, void *context) {
     const char *uri = evhttp_request_get_uri(req);
     if (!uri) {
@@ -469,6 +481,32 @@ void get_api(struct evhttp_request *req, void *context) {
         return;
     }
 
+    struct move_info move_info[TB_MAX_MOVES + 1];
+    unsigned num_moves = 0;
+
+    for (unsigned i = 0; moves[i] != TB_RESULT_FAILED; i++, num_moves++) {
+        move_info[i].move = moves[i];
+
+        move_info[i].pos_after = pos;
+        do_move(&move_info[i].pos_after, moves[i]);
+
+        move_san(&pos, moves[i], move_info[i].san);
+        move_uci(moves[i], move_info[i].uci);
+
+        move_info[i].insufficient_material = is_insufficient_material(&move_info[i].pos_after);
+
+        unsigned dtz = tb_probe_root(&move_info[i].pos_after, NULL);
+        if (dtz == TB_RESULT_FAILED) {
+            evhttp_send_error(req, HTTP_NOTFOUND, "Child position not found in syzygy tablebases");
+            return;
+        }
+
+        move_info[i].checkmate = dtz == TB_RESULT_CHECKMATE;
+        move_info[i].stalemate = dtz == TB_RESULT_STALEMATE;
+        move_info[i].wdl = TB_GET_WDL(dtz) - 2;
+        move_info[i].dtz = TB_GET_DTZ(dtz);
+    }
+
     // Build response
     struct evbuffer *res = evbuffer_new();
     if (!res) {
@@ -485,13 +523,13 @@ void get_api(struct evhttp_request *req, void *context) {
     evbuffer_add_printf(res, "  \"insufficient_material\": %s,\n", is_insufficient_material(&pos) ? "true" : "false");
     evbuffer_add_printf(res, "  \"moves\": [\n");
 
-    for (unsigned i = 0; moves[i] != TB_RESULT_FAILED; i++) {
-        unsigned move = moves[i];
-        char san[32];
-        char uci[6];
-        move_san(&pos, move, san);
-        move_uci(move, uci);
-        evbuffer_add_printf(res, "{\"uci\": \"%s\", \"san\": \"%s\", \"wdl\": %d, \"dtz\": %d}\n", uci, san, TB_GET_WDL(move) - 2, TB_GET_DTZ(move));
+    for (unsigned i = 0; i < num_moves; i++) {
+        evbuffer_add_printf(res, "    {\"uci\": \"%s\", \"san\": \"%s\", \"checkmate\": %s, \"stalemate\": %s, \"insufficient_material\": %s, \"dtz\": %d, \"wdl\": %d}", move_info[i].uci, move_info[i].san, move_info[i].checkmate ? "true" : "false", move_info[i].stalemate ? "true" : "false", move_info[i].insufficient_material ? "true" : "false", move_info[i].dtz, move_info[i].wdl);
+        if (i + 1 < num_moves) {
+            evbuffer_add_printf(res, ",\n");
+        } else {
+            evbuffer_add_printf(res, "\n");
+        }
     }
 
     // End response
