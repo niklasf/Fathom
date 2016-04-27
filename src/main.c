@@ -369,6 +369,30 @@ void move_san(const struct pos *pos, unsigned move, char *str) {
     *str++ = '\0';
 }
 
+void move_uci(unsigned move, char *str) {
+    unsigned from = TB_GET_FROM(move);
+    *str++ = 'a' + file(from);
+    *str++ = '1' + rank(from);
+
+    unsigned to = TB_GET_TO(move);
+    *str++ = 'a' + file(to);
+    *str++ = '1' + rank(to);
+
+    unsigned promotes = TB_GET_PROMOTES(move);
+    switch (promotes) {
+        case TB_PROMOTES_QUEEN:
+            *str++ = 'q'; break;
+        case TB_PROMOTES_ROOK:
+            *str++ = 'r'; break;
+        case TB_PROMOTES_BISHOP:
+            *str++ = 'b'; break;
+        case TB_PROMOTES_KNIGHT:
+            *str++ = 'n'; break;
+    }
+
+    *str++ = '\0';
+}
+
 void get_api(struct evhttp_request *req, void *context) {
     const char *uri = evhttp_request_get_uri(req);
     if (!uri) {
@@ -414,8 +438,10 @@ void get_api(struct evhttp_request *req, void *context) {
     for (unsigned i = 0; moves[i] != TB_RESULT_FAILED; i++) {
         unsigned move = moves[i];
         char san[32];
+        char uci[6];
         move_san(&pos, move, san);
-        evbuffer_add_printf(res, "{\"san\": \"%s\", \"wdl\": %d, \"dtz\": %d}\n", san, TB_GET_WDL(move) - 2, TB_GET_DTZ(move));
+        move_uci(move, uci);
+        evbuffer_add_printf(res, "{\"uci\": \"%s\", \"san\": \"%s\", \"wdl\": %d, \"dtz\": %d}\n", uci, san, TB_GET_WDL(move) - 2, TB_GET_DTZ(move));
     }
 
     evhttp_send_reply(req, HTTP_OK, "OK", res);
