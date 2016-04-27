@@ -432,6 +432,7 @@ struct move_info {
     int wdl;
     bool has_dtm;
     int dtm;
+    bool zeroing;
 };
 
 int probe_dtm(const struct pos *pos, bool *success) {
@@ -561,6 +562,12 @@ int compare_move_info(const void *l, const void *r) {
         return b->dtm - a->dtm;
     }
 
+    if (a->wdl < 0 && b->zeroing != a->zeroing) {
+        return b->zeroing - a->zeroing;
+    } else if (a->wdl > 0 && a->zeroing != b->zeroing) {
+        return a->zeroing - b->zeroing;
+    }
+
     if (b->dtz != a->dtz) {
         return b->dtz - a->dtz;
     }
@@ -647,6 +654,8 @@ void get_api(struct evhttp_request *req, void *context) {
         }
 
         move_info[i].dtm = probe_dtm(&move_info[i].pos_after, &move_info[i].has_dtm);
+
+        move_info[i].zeroing = (board(TB_GET_TO(moves[i])) & (pos.white | pos.black)) || (board(TB_GET_FROM(moves[i])) & pos.pawns);
     }
 
     qsort(move_info, num_moves, sizeof(struct move_info), compare_move_info);
