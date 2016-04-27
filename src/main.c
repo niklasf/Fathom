@@ -430,6 +430,7 @@ struct move_info {
     bool stalemate;
     int dtz;
     int wdl;
+    int real_wdl;
     bool has_dtm;
     int dtm;
     bool zeroing;
@@ -542,8 +543,8 @@ int compare_move_info(const void *l, const void *r) {
     struct move_info *a = (struct move_info *) l;
     struct move_info *b = (struct move_info *) r;
 
-    if (a->wdl != b->wdl) {
-        return a->wdl - b->wdl;
+    if (a->real_wdl != b->real_wdl) {
+        return a->real_wdl - b->real_wdl;
     }
 
     if (b->checkmate != a->checkmate) {
@@ -653,6 +654,14 @@ void get_api(struct evhttp_request *req, void *context) {
             move_info[i].dtz = -TB_GET_DTZ(dtz);
         }
 
+        if (move_info[i].wdl == -2 && move_info[i].dtz - move_info[i].pos_after.rule50 <= -100) {
+            move_info[i].real_wdl = -1;
+        } else if (move_info[i].wdl == 2 && move_info[i].dtz + move_info[i].pos_after.rule50 >= 100) {
+            move_info[i].real_wdl = 1;
+        } else {
+            move_info[i].real_wdl = move_info[i].wdl;
+        }
+
         move_info[i].dtm = probe_dtm(&move_info[i].pos_after, &move_info[i].has_dtm);
 
         move_info[i].zeroing = (board(TB_GET_TO(moves[i])) & (pos.white | pos.black)) || (board(TB_GET_FROM(moves[i])) & pos.pawns);
@@ -677,7 +686,7 @@ void get_api(struct evhttp_request *req, void *context) {
     evbuffer_add_printf(res, "  \"moves\": [\n");
 
     for (unsigned i = 0; i < num_moves; i++) {
-        evbuffer_add_printf(res, "    {\"uci\": \"%s\", \"san\": \"%s\", \"checkmate\": %s, \"stalemate\": %s, \"insufficient_material\": %s, \"dtz\": %d, \"wdl\": %d, ", move_info[i].uci, move_info[i].san, move_info[i].checkmate ? "true" : "false", move_info[i].stalemate ? "true" : "false", move_info[i].insufficient_material ? "true" : "false", move_info[i].dtz, move_info[i].wdl);
+        evbuffer_add_printf(res, "    {\"uci\": \"%s\", \"san\": \"%s\", \"checkmate\": %s, \"stalemate\": %s, \"insufficient_material\": %s, \"zeroing\": %s, \"dtz\": %d, \"wdl\": %d, \"real_wdl\": %d, ", move_info[i].uci, move_info[i].san, move_info[i].checkmate ? "true" : "false", move_info[i].stalemate ? "true" : "false", move_info[i].insufficient_material ? "true" : "false", move_info[i].zeroing ? "true" : "false", move_info[i].dtz, move_info[i].wdl, move_info[i].real_wdl);
 
         if (move_info[i].has_dtm) {
             evbuffer_add_printf(res, "\"dtm\": %d}", move_info[i].dtm);
