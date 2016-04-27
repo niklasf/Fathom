@@ -663,7 +663,7 @@ void get_api(struct evhttp_request *req, void *context) {
         move_info[i].checkmate = dtz == TB_RESULT_CHECKMATE;
         move_info[i].stalemate = dtz == TB_RESULT_STALEMATE;
         if (move_info[i].checkmate) {
-            move_info[i].wdl = move_info[i].real_wdl = pos.turn ? -2 : 2;
+            move_info[i].wdl = move_info[i].real_wdl = -2;
             move_info[i].has_dtm = true;
             move_info[i].dtm = 0;
         } else if (move_info[i].stalemate) {
@@ -704,7 +704,7 @@ void get_api(struct evhttp_request *req, void *context) {
 
     int wdl, rwdl, dtz;
     if (bestmove == TB_RESULT_CHECKMATE) {
-        wdl = rwdl = pos.turn ? 2 : -2;
+        wdl = rwdl = 2;
         dtz = 0;
     } else if (bestmove == TB_RESULT_STALEMATE) {
         wdl = rwdl = dtz = 0;
