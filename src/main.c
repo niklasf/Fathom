@@ -401,9 +401,11 @@ void get_api(struct evhttp_request *req, void *context) {
     }
 
     struct evkeyvalq query;
+    const char *jsonp = NULL;
     const char *fen = NULL;
     if (0 == evhttp_parse_query(uri, &query)) {
         fen = evhttp_find_header(&query, "fen");
+        jsonp = evhttp_find_header(&query, "callback");
     }
     if (!fen || !strlen(fen)) {
         evhttp_send_error(req, HTTP_BADREQUEST, "Missing FEN");
@@ -425,7 +427,13 @@ void get_api(struct evhttp_request *req, void *context) {
         printf("probing: %s\n", fen);
     }
 
-    printf("turn: %d\n", pos.turn);
+    // Set Content-Type
+    struct evkeyvalq *headers = evhttp_request_get_output_headers(req);
+    if (jsonp && strlen(jsonp)) {
+        evhttp_add_header(headers, "Content-Type", "application/javascript");
+    } else {
+        evhttp_add_header(headers, "Content-Type", "application/json");
+    }
 
     unsigned moves[TB_MAX_MOVES];
     unsigned bestmove = tb_probe_root(&pos, moves);
@@ -434,11 +442,17 @@ void get_api(struct evhttp_request *req, void *context) {
         return;
     }
 
+    // Build response
     struct evbuffer *res = evbuffer_new();
     if (!res) {
         fputs("could not allocate response buffer\n", stderr);
         abort();
     }
+
+    if (jsonp && strlen(jsonp)) {
+        evbuffer_add_printf(res, "%s(", jsonp);
+    }
+    evbuffer_add_printf(res, "{\n");
 
     for (unsigned i = 0; moves[i] != TB_RESULT_FAILED; i++) {
         unsigned move = moves[i];
@@ -447,6 +461,14 @@ void get_api(struct evhttp_request *req, void *context) {
         move_san(&pos, move, san);
         move_uci(move, uci);
         evbuffer_add_printf(res, "{\"uci\": \"%s\", \"san\": \"%s\", \"wdl\": %d, \"dtz\": %d}\n", uci, san, TB_GET_WDL(move) - 2, TB_GET_DTZ(move));
+    }
+
+    // End response
+    evbuffer_add_printf(res, "}");
+    if (jsonp && strlen(jsonp)) {
+        evbuffer_add_printf(res, ")\n");
+    } else {
+        evbuffer_add_printf(res, "\n");
     }
 
     evhttp_send_reply(req, HTTP_OK, "OK", res);
