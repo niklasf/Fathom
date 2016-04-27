@@ -281,6 +281,7 @@ extern uint64_t tb_pawn_attacks(unsigned _square, bool _color);
 
 extern bool is_check(const struct pos *_pos);
 extern bool is_mate(const struct pos *_pos);
+extern bool is_valid(const struct pos *_pos);
 
 #endif
 

@@ -416,6 +416,11 @@ void get_api(struct evhttp_request *req, void *context) {
         return;
     }
 
+    if (!is_valid(&pos)) {
+        evhttp_send_error(req, HTTP_BADREQUEST, "Illegal FEN");
+        return;
+    }
+
     if (verbose) {
         printf("probing: %s\n", fen);
     }
