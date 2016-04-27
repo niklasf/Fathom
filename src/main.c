@@ -16,6 +16,7 @@
 
 #define BOARD_RANK_1            0x00000000000000FFull
 #define BOARD_FILE_A            0x8080808080808080ull
+#define BOARD_DARK_SQUARES      0xAA55AA55AA55AA55ull
 #define square(r, f)            (8 * (r) + (f))
 #define rank(s)                 ((s) >> 3)
 #define file(s)                 ((s) & 0x07)
@@ -393,6 +394,32 @@ void move_uci(unsigned move, char *str) {
     *str++ = '\0';
 }
 
+bool is_insufficient_material(const struct pos *pos) {
+    // Easy mating material
+    if (pos->pawns || pos->rooks || pos->queens) {
+        return false;
+    }
+
+    // A single knight or a single bishop
+    if (tb_pop_count(pos->knights | pos->bishops) == 1) {
+        return true;
+    }
+
+    // More than a single knight
+    if (pos->knights) {
+        return false;
+    }
+
+    // All bishops on the same color
+    if (!(pos->bishops & BOARD_DARK_SQUARES)) {
+        return true;
+    } else if (!(pos->bishops & ~BOARD_DARK_SQUARES)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 void get_api(struct evhttp_request *req, void *context) {
     const char *uri = evhttp_request_get_uri(req);
     if (!uri) {
@@ -453,6 +480,10 @@ void get_api(struct evhttp_request *req, void *context) {
         evbuffer_add_printf(res, "%s(", jsonp);
     }
     evbuffer_add_printf(res, "{\n");
+    evbuffer_add_printf(res, "  \"checkmate\": %s,\n", (bestmove == TB_RESULT_CHECKMATE) ? "true" : "false");
+    evbuffer_add_printf(res, "  \"stalemate\": %s,\n", (bestmove == TB_RESULT_STALEMATE) ? "true" : "false");
+    evbuffer_add_printf(res, "  \"insufficient_material\": %s,\n", is_insufficient_material(&pos) ? "true" : "false");
+    evbuffer_add_printf(res, "  \"moves\": [\n");
 
     for (unsigned i = 0; moves[i] != TB_RESULT_FAILED; i++) {
         unsigned move = moves[i];
@@ -464,6 +495,7 @@ void get_api(struct evhttp_request *req, void *context) {
     }
 
     // End response
+    evbuffer_add_printf(res, "  ]\n");
     evbuffer_add_printf(res, "}");
     if (jsonp && strlen(jsonp)) {
         evbuffer_add_printf(res, ")\n");
