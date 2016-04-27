@@ -24,22 +24,6 @@
 // --verbose flag
 static int verbose = 0;
 
-struct pos {
-    uint64_t white;
-    uint64_t black;
-    uint64_t kings;
-    uint64_t queens;
-    uint64_t rooks;
-    uint64_t bishops;
-    uint64_t knights;
-    uint64_t pawns;
-    uint8_t castling;
-    uint8_t rule50;
-    uint8_t ep;
-    bool turn;
-    uint16_t move;
-};
-
 bool parse_fen(struct pos *pos, const char *fen) {
     uint64_t white = 0, black = 0;
     uint64_t kings, queens, rooks, bishops, knights, pawns;
@@ -233,6 +217,77 @@ fen_parse_error:
     return false;
 }
 
+#define do_bb_move(b, from, to)                                         \
+    (((b) & (~board(to)) & (~board(from))) |                            \
+        ((((b) >> (from)) & 0x1) << (to)))
+static void do_move(struct pos *pos, unsigned move)
+{
+    unsigned from     = TB_GET_FROM(move);
+    unsigned to       = TB_GET_TO(move);
+    unsigned promotes = TB_GET_PROMOTES(move);
+    bool turn         = !pos->turn;
+    uint64_t white    = do_bb_move(pos->white, from, to);
+    uint64_t black    = do_bb_move(pos->black, from, to);
+    uint64_t kings    = do_bb_move(pos->kings, from, to);
+    uint64_t queens   = do_bb_move(pos->queens, from, to);
+    uint64_t rooks    = do_bb_move(pos->rooks, from, to);
+    uint64_t bishops  = do_bb_move(pos->bishops, from, to);
+    uint64_t knights  = do_bb_move(pos->knights, from, to);
+    uint64_t pawns    = do_bb_move(pos->pawns, from, to);
+    unsigned ep       = 0;
+    unsigned rule50   = pos->rule50;
+    if (promotes != TB_PROMOTES_NONE)
+    {
+        pawns &= ~board(to);
+        switch (promotes)
+        {
+            case TB_PROMOTES_QUEEN:
+                queens |= board(to); break;
+            case TB_PROMOTES_ROOK:
+                rooks |= board(to); break;
+            case TB_PROMOTES_BISHOP:
+                bishops |= board(to); break;
+            case TB_PROMOTES_KNIGHT:
+                knights |= board(to); break;
+        }
+        rule50 = 0;
+    }
+    else if ((board(from) & pos->pawns) != 0)
+    {
+        rule50 = 0;
+        if (rank(from) == 1 && rank(to) == 3 &&
+            (tb_pawn_attacks(from+8, true) & pos->pawns & pos->black) != 0)
+            ep = from+8;
+        else if (rank(from) == 6 && rank(to) == 4 &&
+            (tb_pawn_attacks(from-8, false) & pos->pawns & pos->white) != 0)
+            ep = from-8;
+        else if (TB_GET_EP(move))
+        {
+            unsigned ep_to = (pos->turn? to+8: to-8);
+            uint64_t ep_mask = ~board(ep_to);
+            white &= ep_mask;
+            black &= ep_mask;
+            pawns &= ep_mask;
+        }
+    }
+    else if ((board(to) & (pos->white | pos->black)) != 0)
+        rule50 = 0;
+    else
+        rule50++;
+    pos->white   = white;
+    pos->black   = black;
+    pos->kings   = kings;
+    pos->queens  = queens;
+    pos->rooks   = rooks;
+    pos->bishops = bishops;
+    pos->knights = knights;
+    pos->pawns   = pawns;
+    pos->ep      = ep;
+    pos->rule50  = rule50;
+    pos->turn    = turn;
+    pos->move += turn;
+}
+
 void move_san(const struct pos *pos, unsigned move, char *str) {
     uint64_t occ      = pos->black | pos->white;
     uint64_t us       = (pos->turn? pos->white: pos->black);
@@ -301,6 +356,16 @@ void move_san(const struct pos *pos, unsigned move, char *str) {
                 *str++ = 'N'; break;
         }
     }
+
+    struct pos pos_after = *pos;
+    do_move(&pos_after, move);
+
+    if (is_mate(&pos_after)) {
+        *str++ = '#';
+    } else if (is_check(&pos_after)) {
+        *str++ = '+';
+    }
+
     *str++ = '\0';
 }
 
@@ -331,10 +396,10 @@ void get_api(struct evhttp_request *req, void *context) {
         printf("probing: %s\n", fen);
     }
 
+    printf("turn: %d\n", pos.turn);
+
     unsigned moves[TB_MAX_MOVES];
-    unsigned bestmove = tb_probe_root(pos.white, pos.black,
-                                      pos.kings, pos.queens, pos.rooks, pos.bishops, pos.knights, pos.pawns,
-                                      pos.rule50, pos.castling, pos.ep, pos.turn, moves);
+    unsigned bestmove = tb_probe_root(&pos, moves);
     if (bestmove == TB_RESULT_FAILED) {
         evhttp_send_error(req, HTTP_NOTFOUND, "Position not found in syzygy tablebases");
         return;

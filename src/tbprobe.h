@@ -54,34 +54,29 @@ typedef uint8_t bool;
 #endif
 #endif
 
+struct pos {
+    uint64_t white;
+    uint64_t black;
+    uint64_t kings;
+    uint64_t queens;
+    uint64_t rooks;
+    uint64_t bishops;
+    uint64_t knights;
+    uint64_t pawns;
+    uint8_t castling;
+    uint8_t rule50;
+    uint8_t ep;
+    bool turn;
+    uint16_t move;
+};
+
+
 /*
  * Internal definitions.  Do not call these functions directly.
  */
 extern bool tb_init_impl(const char *_path);
-extern unsigned tb_probe_wdl_impl(
-    uint64_t _white,
-    uint64_t _black,
-    uint64_t _kings,
-    uint64_t _queens,
-    uint64_t _rooks,
-    uint64_t _bishops,
-    uint64_t _knights,
-    uint64_t _pawns,
-    unsigned _ep,
-    bool     _turn);
-extern unsigned tb_probe_root_impl(
-    uint64_t _white,
-    uint64_t _black,
-    uint64_t _kings,
-    uint64_t _queens,
-    uint64_t _rooks,
-    uint64_t _bishops,
-    uint64_t _knights,
-    uint64_t _pawns,
-    unsigned _rule50,
-    unsigned _ep,
-    bool     _turn,
-    unsigned *_results);
+extern unsigned tb_probe_wdl_impl(const struct pos *_pos);
+extern unsigned tb_probe_root_impl(const struct pos *_pos, unsigned *_results);
 
 /****************************************************************************/
 /* MAIN API                                                                 */
@@ -201,26 +196,13 @@ static inline bool tb_init(const char *_path)
  * - Engines should use this function during search.
  * - This function is thread safe assuming TB_NO_THREADS is disabled.
  */
-static inline unsigned tb_probe_wdl(
-    uint64_t _white,
-    uint64_t _black,
-    uint64_t _kings,
-    uint64_t _queens,
-    uint64_t _rooks,
-    uint64_t _bishops,
-    uint64_t _knights,
-    uint64_t _pawns,
-    unsigned _rule50,
-    unsigned _castling,
-    unsigned _ep,
-    bool     _turn)
+static inline unsigned tb_probe_wdl(const struct pos *_pos)
 {
-    if (_castling != 0)
+    if (_pos->castling != 0)
         return TB_RESULT_FAILED;
-    if (_rule50 != 0)
+    if (_pos->rule50 != 0)
         return TB_RESULT_FAILED;
-    return tb_probe_wdl_impl(_white, _black, _kings, _queens, _rooks,
-        _bishops, _knights, _pawns, _ep, _turn);
+    return tb_probe_wdl_impl(_pos);
 }
 
 /*
@@ -268,25 +250,11 @@ static inline unsigned tb_probe_wdl(
  * - This function is NOT thread safe.  For engines this function should only
  *   be called once at the root per search.
  */
-static inline unsigned tb_probe_root(
-    uint64_t _white,
-    uint64_t _black,
-    uint64_t _kings,
-    uint64_t _queens,
-    uint64_t _rooks,
-    uint64_t _bishops,
-    uint64_t _knights,
-    uint64_t _pawns,
-    unsigned _rule50,
-    unsigned _castling,
-    unsigned _ep,
-    bool     _turn,
-    unsigned *_results)
+static inline unsigned tb_probe_root(const struct pos *_pos, unsigned *_results)
 {
-    if (_castling != 0)
+    if (_pos->castling != 0)
         return TB_RESULT_FAILED;
-    return tb_probe_root_impl(_white, _black, _kings, _queens, _rooks,
-        _bishops, _knights, _pawns, _rule50, _ep, _turn, _results);
+    return tb_probe_root_impl(_pos, _results);
 }
 
 /****************************************************************************/
@@ -310,6 +278,9 @@ extern uint64_t tb_rook_attacks(unsigned _square, uint64_t _occ);
 extern uint64_t tb_bishop_attacks(unsigned _square, uint64_t _occ);
 extern uint64_t tb_knight_attacks(unsigned _square);
 extern uint64_t tb_pawn_attacks(unsigned _square, bool _color);
+
+extern bool is_check(const struct pos *_pos);
+extern bool is_mate(const struct pos *_pos);
 
 #endif
 

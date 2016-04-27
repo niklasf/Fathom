@@ -100,21 +100,6 @@ static inline unsigned popcount(uint64_t x)
 #define MOVE_STALEMATE          0xFFFF
 #define MOVE_CHECKMATE          0xFFFE
 
-struct pos
-{
-    uint64_t white;
-    uint64_t black;
-    uint64_t kings;
-    uint64_t queens;
-    uint64_t rooks;
-    uint64_t bishops;
-    uint64_t knights;
-    uint64_t pawns;
-    uint8_t rule50;
-    uint8_t ep;
-    bool turn;
-};
-
 static bool do_move(struct pos *pos, const struct pos *pos0, uint16_t move);
 static int probe_dtz(const struct pos *pos, int *success);
 
@@ -1080,7 +1065,7 @@ static uint16_t *gen_pawn_ep_captures(const struct pos *pos, uint16_t *moves)
 /*
  * Generate all moves.
  */
-static uint16_t *gen_moves(const struct pos *pos, uint16_t *moves)
+uint16_t *gen_moves(const struct pos *pos, uint16_t *moves)
 {
     uint64_t occ = pos->white | pos->black;
     uint64_t us = (pos->turn? pos->white: pos->black),
@@ -1207,7 +1192,7 @@ static bool is_legal(const struct pos *pos)
 /*
  * Test if the king is in check.
  */
-static bool is_check(const struct pos *pos)
+bool is_check(const struct pos *pos)
 {
     uint64_t occ = pos->white | pos->black;
     uint64_t us = (pos->turn? pos->white: pos->black),
@@ -1232,7 +1217,7 @@ static bool is_check(const struct pos *pos)
 /*
  * Test if the king is in checkmate.
  */
-static bool is_mate(const struct pos *pos)
+bool is_mate(const struct pos *pos)
 {
     if (!is_check(pos))
         return false;
@@ -1251,7 +1236,7 @@ static bool is_mate(const struct pos *pos)
 /*
  * Test if the position is valid.
  */
-static bool is_valid(const struct pos *pos)
+bool is_valid(const struct pos *pos)
 {
     if (popcount(pos->kings) != 2)
         return false;
@@ -1808,71 +1793,21 @@ bool tb_init_impl(const char *path)
     return true;
 }
 
-unsigned tb_probe_wdl_impl(
-    uint64_t white,
-    uint64_t black,
-    uint64_t kings,
-    uint64_t queens,
-    uint64_t rooks,
-    uint64_t bishops,
-    uint64_t knights,
-    uint64_t pawns,
-    unsigned ep,
-    bool turn)
+unsigned tb_probe_wdl_impl(const struct pos *pos)
 {
-    struct pos pos =
-    {
-        white,
-        black,
-        kings,
-        queens,
-        rooks,
-        bishops,
-        knights,
-        pawns,
-        0,
-        (uint8_t)ep,
-        turn
-    };
     int success;
-    int v = probe_wdl(&pos, &success);
+    int v = probe_wdl(pos, &success);
     if (success == 0)
         return TB_RESULT_FAILED;
     return (unsigned)(v + 2);
 }
 
-unsigned tb_probe_root_impl(
-    uint64_t white,
-    uint64_t black,
-    uint64_t kings,
-    uint64_t queens,
-    uint64_t rooks,
-    uint64_t bishops,
-    uint64_t knights,
-    uint64_t pawns,
-    unsigned rule50,
-    unsigned ep,
-    bool turn,
-    unsigned *results)
+unsigned tb_probe_root_impl(const struct pos *pos, unsigned *results)
 {
-    struct pos pos =
-    {
-        white,
-        black,
-        kings,
-        queens,
-        rooks,
-        bishops,
-        knights,
-        pawns,
-        (uint8_t)rule50,
-        (uint8_t)ep,
-        turn
-    };
     int dtz;
-    if (!is_valid(&pos))
+    if (!is_valid(pos))
         return TB_RESULT_FAILED;
-    uint16_t move = probe_root(&pos, &dtz, results);
+    uint16_t move = probe_root(pos, &dtz, results);
     if (move == 0)
         return TB_RESULT_FAILED;
     if (move == MOVE_CHECKMATE)
@@ -1880,12 +1815,12 @@ unsigned tb_probe_root_impl(
     if (move == MOVE_STALEMATE)
         return TB_RESULT_STALEMATE;
     unsigned res = 0;
-    res = TB_SET_WDL(res, dtz_to_wdl(rule50, dtz));
+    res = TB_SET_WDL(res, dtz_to_wdl(pos->rule50, dtz));
     res = TB_SET_DTZ(res, (dtz < 0? -dtz: dtz));
     res = TB_SET_FROM(res, move_from(move));
     res = TB_SET_TO(res, move_to(move));
     res = TB_SET_PROMOTES(res, move_promotes(move));
-    res = TB_SET_EP(res, is_en_passant(&pos, move));
+    res = TB_SET_EP(res, is_en_passant(pos, move));
     return res;
 }
 
