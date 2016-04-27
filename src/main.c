@@ -524,17 +524,48 @@ int probe_dtm(const struct pos *pos, bool *success) {
     *success = true;
 
     if (info == tb_WMATE && pos->turn) {
-        return -plies_to_mate;
+        return plies_to_mate;
     } else if (info == tb_BMATE && !pos->turn) {
-        return -plies_to_mate;
+        return plies_to_mate;
     } else if (info == tb_WMATE && !pos->turn) {
-        return plies_to_mate;
+        return -plies_to_mate;
     } else if (info == tb_BMATE && pos->turn) {
-        return plies_to_mate;
+        return -plies_to_mate;
     } else {
         fprintf(stderr, "gaviota tablebase error, info = %d\n", info);
         abort();
     }
+}
+
+int compare_move_info(const void *l, const void *r) {
+    struct move_info *a = (struct move_info *) l;
+    struct move_info *b = (struct move_info *) r;
+
+    if (a->wdl != b->wdl) {
+        return a->wdl - b->wdl;
+    }
+
+    if (b->checkmate != a->checkmate) {
+        return b->checkmate - a->checkmate;
+    }
+
+    if (b->stalemate != a->stalemate) {
+        return b->stalemate - a->stalemate;
+    }
+
+    if (b->insufficient_material != a->insufficient_material) {
+        return b->insufficient_material - a->insufficient_material;
+    }
+
+    if (b->has_dtm && a->has_dtm && b->dtm != a->dtm) {
+        return b->dtm - a->dtm;
+    }
+
+    if (b->dtz != a->dtz) {
+        return b->dtz - a->dtz;
+    }
+
+    return strcmp(a->uci, b->uci);
 }
 
 void get_api(struct evhttp_request *req, void *context) {
@@ -609,10 +640,16 @@ void get_api(struct evhttp_request *req, void *context) {
         move_info[i].checkmate = dtz == TB_RESULT_CHECKMATE;
         move_info[i].stalemate = dtz == TB_RESULT_STALEMATE;
         move_info[i].wdl = TB_GET_WDL(dtz) - 2;
-        move_info[i].dtz = TB_GET_DTZ(dtz);
+        if (move_info[i].wdl >= 0) {
+            move_info[i].dtz = TB_GET_DTZ(dtz);
+        } else {
+            move_info[i].dtz = -TB_GET_DTZ(dtz);
+        }
 
         move_info[i].dtm = probe_dtm(&move_info[i].pos_after, &move_info[i].has_dtm);
     }
+
+    qsort(move_info, num_moves, sizeof(struct move_info), compare_move_info);
 
     // Build response
     struct evbuffer *res = evbuffer_new();
