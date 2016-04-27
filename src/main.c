@@ -457,7 +457,7 @@ int probe_dtm(const struct pos *pos, bool *success) {
     uint64_t white = pos->white;
     while (white) {
         uint64_t sq = white & -white;
-        ws[i] = square(rank(sq), file(sq));
+        ws[i] = tb_lsb(sq);
         if (pos->pawns & sq) {
             wp[i] = tb_PAWN;
         } else if (pos->knights & sq) {
@@ -474,7 +474,7 @@ int probe_dtm(const struct pos *pos, bool *success) {
             fputs("inconsistent bitboard\n", stderr);
             abort();
         }
-        white &= white - 1;
+        white = tb_pop_lsb(white);
         i++;
     }
     ws[i] = tb_NOSQUARE;
@@ -484,7 +484,7 @@ int probe_dtm(const struct pos *pos, bool *success) {
     uint64_t black = pos->black;
     while (black) {
         uint64_t sq = black & -black;
-        bs[i] = square(rank(sq), file(sq));
+        bs[i] = tb_lsb(sq);
         if (pos->pawns & sq) {
             bp[i] = tb_PAWN;
         } else if (pos->knights & sq) {
@@ -501,16 +501,23 @@ int probe_dtm(const struct pos *pos, bool *success) {
             fputs("inconsistent bitboard\n", stderr);
             abort();
         }
-        black &= black - 1;
+        black = tb_pop_lsb(black);
         i++;
     }
     bs[i] = tb_NOSQUARE;
     bp[i] = tb_NOPIECE;
 
-    unsigned info;
-    unsigned plies_to_mate;
-    unsigned available =  tb_probe_hard(pos->turn, pos->ep ? pos->ep : tb_NOSQUARE, 0, ws, bs, wp, bp, &info, &plies_to_mate);
-    if (!available || info == tb_FORBID || info == tb_UNKNOWN || info == tb_DRAW) {
+    unsigned info = 0;
+    unsigned plies_to_mate = 0;
+    unsigned available =  tb_probe_hard(pos->turn ? tb_WHITE_TO_MOVE : tb_BLACK_TO_MOVE, pos->ep ? pos->ep : tb_NOSQUARE, 0, ws, bs, wp, bp, &info, &plies_to_mate);
+    if (!available || info == tb_FORBID || info == tb_UNKNOWN) {
+        if (verbose) {
+            fprintf(stderr, "gaviota probe failed: info = %d\n", info);
+        }
+        return 0;
+    }
+
+    if (info == tb_DRAW) {
         return 0;
     }
 
@@ -525,7 +532,7 @@ int probe_dtm(const struct pos *pos, bool *success) {
     } else if (info == tb_BMATE && pos->turn) {
         return plies_to_mate;
     } else {
-        fprintf(stderr, "gaviota tablebase error, info: %d", info);
+        fprintf(stderr, "gaviota tablebase error, info = %d\n", info);
         abort();
     }
 }
