@@ -662,16 +662,25 @@ void get_api(struct evhttp_request *req, void *context) {
 
         move_info[i].checkmate = dtz == TB_RESULT_CHECKMATE;
         move_info[i].stalemate = dtz == TB_RESULT_STALEMATE;
-        move_info[i].wdl = TB_GET_WDL(dtz) - 2;
-        if (move_info[i].wdl >= 0) {
-            move_info[i].dtz = TB_GET_DTZ(dtz);
+        if (move_info[i].checkmate) {
+            move_info[i].wdl = move_info[i].real_wdl = pos.turn ? -2 : 2;
+            move_info[i].has_dtm = true;
+            move_info[i].dtm = 0;
+        } else if (move_info[i].stalemate) {
+            move_info[i].wdl = move_info[i].real_wdl = 0;
+            move_info[i].has_dtm = false;
         } else {
-            move_info[i].dtz = -TB_GET_DTZ(dtz);
+            move_info[i].wdl = TB_GET_WDL(dtz) - 2;
+            if (move_info[i].wdl >= 0) {
+                move_info[i].dtz = TB_GET_DTZ(dtz);
+            } else {
+                move_info[i].dtz = -TB_GET_DTZ(dtz);
+            }
+
+            move_info[i].real_wdl = real_wdl(move_info[i].wdl, move_info[i].dtz, move_info[i].pos_after.rule50);
+
+            move_info[i].dtm = probe_dtm(&move_info[i].pos_after, &move_info[i].has_dtm);
         }
-
-        move_info[i].real_wdl = real_wdl(move_info[i].wdl, move_info[i].dtz, move_info[i].pos_after.rule50);
-
-        move_info[i].dtm = probe_dtm(&move_info[i].pos_after, &move_info[i].has_dtm);
 
         move_info[i].zeroing = (board(TB_GET_TO(moves[i])) & (pos.white | pos.black)) || (board(TB_GET_FROM(moves[i])) & pos.pawns);
     }
@@ -693,12 +702,20 @@ void get_api(struct evhttp_request *req, void *context) {
     evbuffer_add_printf(res, "  \"stalemate\": %s,\n", (bestmove == TB_RESULT_STALEMATE) ? "true" : "false");
     evbuffer_add_printf(res, "  \"insufficient_material\": %s,\n", is_insufficient_material(&pos) ? "true" : "false");
 
-    int wdl = TB_GET_WDL(bestmove) - 2;
-    int dtz = TB_GET_DTZ(bestmove);
-    if (wdl < 0) {
-        dtz = -dtz;
+    int wdl, rwdl, dtz;
+    if (bestmove == TB_RESULT_CHECKMATE) {
+        wdl = rwdl = pos.turn ? 2 : -2;
+        dtz = 0;
+    } else if (bestmove == TB_RESULT_STALEMATE) {
+        wdl = rwdl = dtz = 0;
+    } else {
+        wdl = TB_GET_WDL(bestmove) - 2;
+        dtz = TB_GET_DTZ(bestmove);
+        if (wdl < 0) {
+            dtz = -dtz;
+        }
+        rwdl = real_wdl(wdl, dtz, pos.rule50);
     }
-    int rwdl = real_wdl(wdl, dtz, pos.rule50);
 
     evbuffer_add_printf(res, "  \"dtz\": %d,\n", dtz);
     evbuffer_add_printf(res, "  \"wdl\": %d,\n", wdl);
