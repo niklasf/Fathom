@@ -37,7 +37,7 @@ bool parse_fen(struct pos *pos, const char *fen) {
     char c;
     int r, f;
 
-    if (fen == NULL)
+    if (fen == NULL || strlen(fen) >= 128)
         goto fen_parse_error;
 
     for (r = 7; r >= 0; r--)
