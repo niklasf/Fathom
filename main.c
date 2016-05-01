@@ -789,7 +789,7 @@ int main(int argc, char *argv[]) {
         abort();
     }
 
-    const char *syzygy_path = NULL;
+    char *syzygy_path = NULL;
 
     // Parse command line options
     static struct option long_options[] = {
@@ -804,7 +804,7 @@ int main(int argc, char *argv[]) {
     while (true) {
         int option_index;
         int opt = getopt_long(argc, argv, "p:g:s:", long_options, &option_index);
-        if (opt < -1) {
+        if (opt < 0) {
             break;
         }
 
@@ -829,7 +829,13 @@ int main(int argc, char *argv[]) {
                 break;
 
             case 's':
-                syzygy_path = strdup(optarg);
+                if (!syzygy_path) {
+                    syzygy_path = strdup(optarg);
+                } else {
+                    syzygy_path = (char *) realloc(syzygy_path, strlen(syzygy_path) + 1 + strlen(optarg) + 1);
+                    strcat(syzygy_path, ":");
+                    strcat(syzygy_path, optarg);
+                }
                 break;
 
             case '?':
@@ -838,6 +844,11 @@ int main(int argc, char *argv[]) {
             default:
                 abort();
         }
+    }
+
+    if (optind != argc) {
+        fputs("unexpected positional argument\n", stderr);
+        return 78;
     }
 
     // Initialize Gaviota tablebases
@@ -854,6 +865,7 @@ int main(int argc, char *argv[]) {
         syzygy_init(syzygy_path);
         if (verbose) {
             printf("SYZYGY initialization\n");
+            printf("  Path = %s\n", syzygy_path);
             printf("  Cardinality = %d\n", TB_LARGEST);
             printf("\n");
         }
