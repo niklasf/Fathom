@@ -7,7 +7,6 @@ import subprocess
 import contextlib
 import requests
 import random
-import time
 import threading
 
 
@@ -18,7 +17,7 @@ class FathomTest(unittest.TestCase):
 
     @contextlib.contextmanager
     def fathom(self, *args, **kwargs):
-        port = 30000 + random.randint(0, 9999)
+        port = random.randint(30000, 39999)
 
         process = subprocess.Popen(
             ["./fathom", "--port", str(port),
