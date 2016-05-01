@@ -86,9 +86,9 @@ Moves are sorted, best move first.
 License
 -------
 
-(C) 2013-2015 Ronald de Man (original code)
-(C) 2015 basil (new modifications)
-(C) 2016 Niklas Fiekas (probe server)
+Copyright (c) 2013-2015 Ronald de Man (original code)  
+Copyright (c) 2015 basil (new modifications)  
+Copyright (c) 2016 Niklas Fiekas (probe server)
 
 Ronald de Man's original code can be "redistributed and/or modified without
 restrictions".
