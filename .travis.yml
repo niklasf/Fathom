@@ -9,7 +9,7 @@ addons:
       - libevent-dev
 before_install:
   - # Python requests library for testing
-  - pip install requests
+  - pip install --user requests
   - # Gaviota libgtb
   - git clone https://github.com/michiguel/Gaviota-Tablebases.git --depth 1
   - cd Gaviota-Tablebases
