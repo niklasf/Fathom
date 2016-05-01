@@ -5,10 +5,10 @@ LDFLAGS += -Wl,-z,now -Wl,-z,relro -levent -lgtb -pthread
 fathom: main.o tbprobe.o
 	$(CXX) -o $@ main.o tbprobe.o $(LDFLAGS)
 
-tbprobe.o: tbcore.c tbcore.h tbprobe.c tbprobe.h
+tbprobe.o: tbcore.c tbcore.h tbprobe.c tbprobe.h tbconfig.h
 	$(CC) $(CFLAGS) -c tbprobe.c
 
-main.o: main.c tbprobe.h
+main.o: main.c tbprobe.h tbconfig.h
 	$(CC) $(CFLAGS) -c main.c
 
 .PHONY: test
