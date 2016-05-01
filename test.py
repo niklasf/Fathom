@@ -23,13 +23,29 @@ class FathomTest(unittest.TestCase):
         process = subprocess.Popen(
             ["./fathom", "--port", str(port),
              "--syzygy", kwargs.get("syzygy", "syzygy"),
-             "--gaviota", kwargs.get("gaviota", "gaviota")] + list(args))
+             "--gaviota", kwargs.get("gaviota", "gaviota")] + list(args),
+            stdout=subprocess.PIPE,
+            bufsize=1,
+            universal_newlines=True)
 
-        time.sleep(1)
+        listening = threading.Event()
+
+        def stdout_reader():
+            for line in iter(process.stdout.readline, ""):
+                print(line.rstrip())
+                if line.startswith("listening"):
+                    listening.set()
+
+            listening.set()
+
+        reader_thread = threading.Thread(target=stdout_reader)
+        reader_thread.start()
+        listening.wait()
 
         yield "http://127.0.0.1:%d/tablebase" % port
 
         process.terminate()
+        reader_thread.join()
 
     def test_no_cors(self):
         with self.fathom() as endpoint:
