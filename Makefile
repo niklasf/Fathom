@@ -10,3 +10,11 @@ tbprobe.o: tbcore.c tbcore.h tbprobe.c tbprobe.h
 
 main.o: main.c tbprobe.h
 	$(CC) $(CFLAGS) -c main.c
+
+.PHONY: test
+test: fathom
+	python test.py -v
+
+.PHONY: clean
+clean:
+	-rm tbprobe.o main.o fathom

@@ -8,6 +8,8 @@ addons:
     packages:
       - libevent-dev
 before_install:
+  - # Python requests library for testing
+  - pip install requests
   - # Gaviota libgtb
   - git clone https://github.com/michiguel/Gaviota-Tablebases.git --depth 1
   - cd Gaviota-Tablebases
@@ -15,3 +17,4 @@ before_install:
   - export LD_LIBRARY_PATH="`pwd`:${LD_LIBRARY_PATH}"
   - cd ..
 install: CFLAGS=-IGaviota-Tablebases LDFLAGS=-LGaviota-Tablebases make
+test: make test
