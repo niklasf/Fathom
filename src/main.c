@@ -792,23 +792,23 @@ int main(int argc, char *argv[]) {
     const char *syzygy_path = NULL;
 
     // Parse command line options
-    while (1) {
-        static struct option long_options[] = {
-            {"verbose", no_argument,       &verbose, 1},
-            {"cors",    no_argument,       &cors, 1},
-            {"port",    required_argument, 0, 'p'},
-            {"gaviota", required_argument, 0, 'g'},
-            {"syzygy",  required_argument, 0, 's'},
-            {0, 0, 0, 0},
-        };
+    static struct option long_options[] = {
+        {"verbose", no_argument,       &verbose, 1},
+        {"cors",    no_argument,       &cors, 1},
+        {"port",    required_argument, 0, 'p'},
+        {"gaviota", required_argument, 0, 'g'},
+        {"syzygy",  required_argument, 0, 's'},
+        {NULL, 0, 0, 0},
+    };
 
+    while (true) {
         int option_index;
-        int c = getopt_long(argc, argv, "p:g:s:", long_options, &option_index);
-        if (c == -1) {
+        int opt = getopt_long(argc, argv, "p:g:s:", long_options, &option_index);
+        if (opt < -1) {
             break;
         }
 
-        switch (c) {
+        switch (opt) {
             case 0:
                 break;
 
@@ -859,5 +859,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    // Serve
     return serve(port);
 }
