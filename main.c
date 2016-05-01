@@ -474,7 +474,7 @@ int probe_dtm(const struct pos *pos, bool *success) {
         } else if (pos->kings & sq) {
             wp[i] = tb_KING;
         } else {
-            fputs("inconsistent bitboard\n", stderr);
+            puts("inconsistent bitboard\n");
             abort();
         }
         white = tb_pop_lsb(white);
@@ -501,7 +501,7 @@ int probe_dtm(const struct pos *pos, bool *success) {
         } else if (pos->kings & sq) {
             bp[i] = tb_KING;
         } else {
-            fputs("inconsistent bitboard\n", stderr);
+            puts("inconsistent bitboard\n");
             abort();
         }
         black = tb_pop_lsb(black);
@@ -515,7 +515,7 @@ int probe_dtm(const struct pos *pos, bool *success) {
     unsigned available =  tb_probe_hard(pos->turn ? tb_WHITE_TO_MOVE : tb_BLACK_TO_MOVE, pos->ep ? pos->ep : tb_NOSQUARE, 0, ws, bs, wp, bp, &info, &plies_to_mate);
     if (!available || info == tb_FORBID || info == tb_UNKNOWN) {
         if (verbose) {
-            fprintf(stderr, "gaviota probe failed: info = %d\n", info);
+            printf("gaviota probe failed: info = %d\n", info);
         }
         return 0;
     }
@@ -535,7 +535,7 @@ int probe_dtm(const struct pos *pos, bool *success) {
     } else if (info == tb_BMATE && pos->turn) {
         return -plies_to_mate;
     } else {
-        fprintf(stderr, "gaviota tablebase error, info = %d\n", info);
+        printf("gaviota tablebase error, info = %d\n", info);
         abort();
     }
 }
@@ -590,7 +590,7 @@ int real_wdl(int wdl, int dtz, int rule50) {
 void get_api(struct evhttp_request *req, void *context) {
     const char *uri = evhttp_request_get_uri(req);
     if (!uri) {
-        fputs("evhttp_request_get_uri failed\n", stderr);
+        puts("evhttp_request_get_uri failed\n");
         return;
     }
 
@@ -690,7 +690,7 @@ void get_api(struct evhttp_request *req, void *context) {
     // Build response
     struct evbuffer *res = evbuffer_new();
     if (!res) {
-        fputs("could not allocate response buffer\n", stderr);
+        puts("could not allocate response buffer\n");
         abort();
     }
 
@@ -756,13 +756,13 @@ void get_api(struct evhttp_request *req, void *context) {
 int serve(int port) {
     struct event_base *base = event_base_new();
     if (!base) {
-        fputs("could not initialize event_base\n", stderr);
+        puts("could not initialize event_base\n");
         abort();
     }
 
     struct evhttp *http = evhttp_new(base);
     if (!http) {
-        fputs("could not initialize evhttp\n", stderr);
+        puts("could not initialize evhttp\n");
         abort();
     }
 
@@ -770,7 +770,7 @@ int serve(int port) {
 
     struct evhttp_bound_socket *socket =  evhttp_bind_socket_with_handle(http, "127.0.0.1", port);
     if (!socket) {
-        fprintf(stderr, "could not bind socket to http://127.0.0.1:%d/\n", port);
+        printf("could not bind socket to http://127.0.0.1:%d/\n", port);
         return 1;
     }
 
@@ -785,7 +785,7 @@ int main(int argc, char *argv[]) {
 
     const char **gaviota_paths = tbpaths_init();
     if (!gaviota_paths) {
-        fputs("tbpaths_init failed\n", stderr);
+        puts("tbpaths_init failed\n");
         abort();
     }
 
@@ -815,7 +815,7 @@ int main(int argc, char *argv[]) {
             case 'p':
                 port = atoi(optarg);
                 if (!port) {
-                    fprintf(stderr, "invalid port: %d\n", port);
+                    printf("invalid port: %d\n", port);
                     return 78;
                 }
                 break;
@@ -823,7 +823,7 @@ int main(int argc, char *argv[]) {
             case 'g':
                 gaviota_paths = tbpaths_add(gaviota_paths, optarg);
                 if (!gaviota_paths) {
-                    fputs("tbpaths_add failed\n", stderr);
+                    puts("tbpaths_add failed\n");
                     abort();
                 }
                 break;
@@ -847,14 +847,14 @@ int main(int argc, char *argv[]) {
     }
 
     if (optind != argc) {
-        fputs("unexpected positional argument\n", stderr);
+        puts("unexpected positional argument\n");
         return 78;
     }
 
     // Initialize Gaviota tablebases
     char *info = tb_init(verbose, tb_CP4, gaviota_paths);
     if (info) {
-        fputs(info, stdout);
+        puts(info);
     }
 
     tbcache_init(32 * 1024 * 1024, 10);  // 32 MiB, 10% WDL
