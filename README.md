@@ -2,8 +2,9 @@ Fathom
 ======
 
 HTTP API for Gaviota and Syzygy tablebases. Based on
-[Fathom](https://github.com/basil00) by basil00, which is in turn based on
-Ronald de Man's [original Syzygy probing code](https://...), and
+[Fathom](https://github.com/basil00/Fathom) by basil00, which is in turn based
+on Ronald de Man's
+[original Syzygy probing code](https://github.com/syzygy1/tb), and
 [libgtb](https://github.com/michiguel/Gaviota-Tablebases)
 by Miguel A. Ballicora.
 
