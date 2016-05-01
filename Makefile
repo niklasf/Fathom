@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS += -Wall -fPIE -fstack-protector-all -D TB_NO_HW_POP_COUNT -O3
+CFLAGS += -std=c99 -Wall -fPIE -fstack-protector-all -D TB_NO_HW_POP_COUNT -O3
 LDFLAGS += -Wl,-z,now -Wl,-z,relro -levent -lgtb -pthread
 
 fathom: main.o tbprobe.o
