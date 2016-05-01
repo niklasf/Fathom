@@ -872,7 +872,12 @@ int main(int argc, char *argv[]) {
     }
 
     if (!syzygy_path || TB_LARGEST < 3) {
-        printf("at least some syzygy tables are required\n");
+        printf("at least some syzygy tables are required");
+        if (!syzygy_path) {
+            puts(" (--syzygy)");
+        } else {
+            printf(" (--syzygy %s)\n", syzygy_path);
+        }
         return 78;
     }
 
