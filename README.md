@@ -1,5 +1,7 @@
-Fathom
-======
+Tablebases for lichess.org
+==========================
+
+[![Build Status](https://travis-ci.org/niklasf/Fathom.svg?branch=lichess)](https://travis-ci.org/niklasf/Fathom)
 
 HTTP API for Gaviota and Syzygy tablebases. Based on
 [Fathom](https://github.com/basil00/Fathom) by basil00, which is in turn based
