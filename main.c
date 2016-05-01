@@ -871,6 +871,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    if (!syzygy_path || TB_LARGEST < 3) {
+        printf("at least some syzygy tables are required\n");
+        return 78;
+    }
+
     // Serve
     return serve(port);
 }
