@@ -1,0 +1,17 @@
+language: c
+sudo: false
+branches:
+  except:
+    - master
+addons:
+  apt:
+    packages:
+      - libevent-dev
+before_install:
+  - # Gaviota libgtb
+  - git clone https://github.com/michiguel/Gaviota-Tablebases.git --depth 1
+  - cd Gaviota-Tablebases
+  - make
+  - export LD_LIBRARY_PATH="`pwd`:${LD_LIBRARY_PATH}"
+  - cd ..
+install: make
