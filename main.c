@@ -474,7 +474,7 @@ int probe_dtm(const struct pos *pos, bool *success) {
         } else if (pos->kings & sq) {
             wp[i] = tb_KING;
         } else {
-            puts("inconsistent bitboard\n");
+            puts("inconsistent bitboard");
             abort();
         }
         white = tb_pop_lsb(white);
@@ -501,7 +501,7 @@ int probe_dtm(const struct pos *pos, bool *success) {
         } else if (pos->kings & sq) {
             bp[i] = tb_KING;
         } else {
-            puts("inconsistent bitboard\n");
+            puts("inconsistent bitboard");
             abort();
         }
         black = tb_pop_lsb(black);
@@ -590,7 +590,7 @@ int real_wdl(int wdl, int dtz, int rule50) {
 void get_api(struct evhttp_request *req, void *context) {
     const char *uri = evhttp_request_get_uri(req);
     if (!uri) {
-        puts("evhttp_request_get_uri failed\n");
+        puts("evhttp_request_get_uri failed");
         return;
     }
 
@@ -690,7 +690,7 @@ void get_api(struct evhttp_request *req, void *context) {
     // Build response
     struct evbuffer *res = evbuffer_new();
     if (!res) {
-        puts("could not allocate response buffer\n");
+        puts("could not allocate response buffer");
         abort();
     }
 
@@ -756,13 +756,13 @@ void get_api(struct evhttp_request *req, void *context) {
 int serve(int port) {
     struct event_base *base = event_base_new();
     if (!base) {
-        puts("could not initialize event_base\n");
+        puts("could not initialize event_base");
         abort();
     }
 
     struct evhttp *http = evhttp_new(base);
     if (!http) {
-        puts("could not initialize evhttp\n");
+        puts("could not initialize evhttp");
         abort();
     }
 
@@ -785,7 +785,7 @@ int main(int argc, char *argv[]) {
 
     const char **gaviota_paths = tbpaths_init();
     if (!gaviota_paths) {
-        puts("tbpaths_init failed\n");
+        puts("tbpaths_init failed");
         abort();
     }
 
@@ -823,7 +823,7 @@ int main(int argc, char *argv[]) {
             case 'g':
                 gaviota_paths = tbpaths_add(gaviota_paths, optarg);
                 if (!gaviota_paths) {
-                    puts("tbpaths_add failed\n");
+                    puts("tbpaths_add failed");
                     abort();
                 }
                 break;
@@ -847,7 +847,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (optind != argc) {
-        puts("unexpected positional argument\n");
+        puts("unexpected positional argument");
         return 78;
     }
 
