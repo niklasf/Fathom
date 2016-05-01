@@ -17,4 +17,4 @@ test: fathom
 
 .PHONY: clean
 clean:
-	-rm tbprobe.o main.o fathom
+	-rm -f tbprobe.o main.o fathom
