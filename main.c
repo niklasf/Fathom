@@ -780,6 +780,8 @@ int serve(int port) {
 }
 
 int main(int argc, char *argv[]) {
+    fclose(stdin);
+
     // Options
     static int port = 5000;
 
