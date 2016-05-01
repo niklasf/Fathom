@@ -17,4 +17,4 @@ before_install:
   - export LD_LIBRARY_PATH="`pwd`:${LD_LIBRARY_PATH}"
   - cd ..
 install: CFLAGS=-IGaviota-Tablebases LDFLAGS=-LGaviota-Tablebases make
-test: make test
+script: make test
