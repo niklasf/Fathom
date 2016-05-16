@@ -69,6 +69,14 @@ class FathomTest(unittest.TestCase):
             self.assertEqual(data["wdl"], -2)
             self.assertEqual(data["real_wdl"], -2)
 
+    def test_pawn_on_backrank(self):
+        with self.fathom() as endpoint:
+            req = requests.get(endpoint, {"fen": "2p5/8/8/4k3/2K5/8/8/7P w - - 0 1"})
+            self.assertEqual(req.status_code, 400)
+
+            req = requests.get(endpoint, {"fen": "2P5/8/8/4k3/2K5/8/8/8 w - - 0 1"})
+            self.assertEqual(req.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()
