@@ -77,6 +77,13 @@ class FathomTest(unittest.TestCase):
             req = requests.get(endpoint, {"fen": "2P5/8/8/4k3/2K5/8/8/8 w - - 0 1"})
             self.assertEqual(req.status_code, 400)
 
+    def test_drawing_ep_capture(self):
+        with self.fathom() as endpoint:
+            data = requests.get(endpoint, {"fen": "8/8/8/8/6pP/8/8/k6K b - h3 0 1"}).json()
+            self.assertEqual(data["wdl"], 0)
+            self.assertEqual(data["moves"][0]["wdl"], 0)
+            self.assertEqual(data["moves"][0]["san"], "gxh3")
+
 
 if __name__ == "__main__":
     unittest.main()
