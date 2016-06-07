@@ -323,11 +323,10 @@ void move_san(const struct pos *pos, unsigned move, char *str) {
         att = tb_knight_attacks(to) & us & pos->knights;
     }
     else
-    {
-        if (capture)
-            *str++ = 'a' + f;
-    }
-    if (tb_pop_count(att) > 1)
+        att = tb_pawn_attacks(to, !pos->turn) & us & pos->pawns;
+    if ((b & pos->pawns) && capture)
+        *str++ = 'a' + f;
+    else if (tb_pop_count(att) > 1)
     {
         if (tb_pop_count(att & (BOARD_FILE_A >> f)) <= 1)
             *str++ = 'a' + f;
