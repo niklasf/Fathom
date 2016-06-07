@@ -48,7 +48,7 @@ CORS enabled for all domains. Provide `callback` parameter to use JSONP.
 ### `GET /tablebase`
 
 ```
-> curl http://expl.lichess.org/tablebase?fen=8/6B1/8/8/B7/8/K1pk4/8%20b%20-%20-%200%201
+> curl https://expl.lichess.org/tablebase?fen=8/6B1/8/8/B7/8/K1pk4/8%20b%20-%20-%200%201
 ```
 
 name | type | default | description
