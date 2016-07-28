@@ -540,8 +540,8 @@ int probe_dtm(const struct pos *pos, bool *success) {
 }
 
 int compare_move_info(const void *l, const void *r) {
-    struct move_info *a = (struct move_info *) l;
-    struct move_info *b = (struct move_info *) r;
+    const struct move_info *a = (struct move_info *) l;
+    const struct move_info *b = (struct move_info *) r;
 
     if (a->real_wdl != b->real_wdl) {
         return a->real_wdl - b->real_wdl;
